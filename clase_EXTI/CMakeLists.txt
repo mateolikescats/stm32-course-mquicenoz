@@ -23,6 +23,9 @@ set(PROJECT_NAME clase_EXTI)
 # Create an executable object type
 add_executable(${PROJECT_NAME})
 
+# Path to the STM32Cube firmware package (adjust the version if it changes)
+set(CMSIS_ROOT "/home/mateo/STM32Cube/Repository/stm32cube_fw_f4_v1283/STM32Cube_FW_F4_V1.28.0")
+
 # Include additional CMake files for flags, components, and files
 include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/flags.cmake)
 include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/components.cmake)
@@ -30,12 +33,13 @@ include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/files.cmake)
 
 # Add sources to executable/library
 target_sources(${PROJECT_NAME} PRIVATE
-  # User defined sources
+    ${CMSIS_ROOT}/Drivers/CMSIS/Device/ST/STM32F4xx/Source/Templates/system_stm32f4xx.c
 )
 
 # Add include directories
 target_include_directories(${PROJECT_NAME} PRIVATE
-  # User defined include directories
+    ${CMSIS_ROOT}/Drivers/CMSIS/Core/Include
+    ${CMSIS_ROOT}/Drivers/CMSIS/Device/ST/STM32F4xx/Include
 )
 
 # Compiler options
@@ -45,7 +49,7 @@ target_compile_options(${PROJECT_NAME} PRIVATE
 
 # Add additional defined symbols
 target_compile_definitions(${PROJECT_NAME} PRIVATE
-  # Add additional defined symbols here
+    STM32F411xE   # use STM32F446xx if working with a NUCLEO-F446RE
 )
 
 # Linker options
