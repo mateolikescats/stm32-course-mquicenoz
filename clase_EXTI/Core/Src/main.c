@@ -59,8 +59,8 @@ void init_exit13(void){
     SYSCFG->EXTICR[3] |= (0b0010 << 4); // Select PA13 as source for EXTI13
 
     // Enable interrupt for EXTI13 on falling edge
-    EXTI->IMR |= (1 << 13); // Unmask EXTI13
     EXTI->FTSR |= (1 << 13); // Trigger on falling edge
+    EXTI->IMR |= (1 << 13); // Unmask EXTI13
 
     NVIC_EnableIRQ(EXTI15_10_IRQn); // Enable EXTI15_10 interrupt in NVIC
 }
@@ -73,7 +73,7 @@ void EXTI15_10_IRQHandler(void)
         
         EXTI->PR |= (1 << 13); // Clear the pending interrupt flag for EXTI13
         number++; // Increment the number variable
-    }
+    }   
 }
 
 
