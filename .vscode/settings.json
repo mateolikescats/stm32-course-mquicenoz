@@ -1,3 +1,4 @@
 {
-    "cmake.sourceDirectory": "/home/mateo/github/stm32-course-mquicenoz/p_1"
+    "cmake.sourceDirectory": "/home/mateo/github/stm32-course-mquicenoz/bare-metal-stm32",
+    "C_Cpp.intelliSenseEngine": "disabled"
 }
