@@ -40,46 +40,58 @@ int main(void)
     it will wrap around to the minimum value of that data type.*/
 
     uint8_t  e = 257;
+    /*When you assign a value that is too large for the data type,
+    it will go around and start from the minimum value, in this case 1.*/
 
     //0.4
-    uint8_t a = 200;
-    int8_t  b = 200;
-    int8_t  c = -1;
+    uint8_t a1 = 200; //uint8_t goes from 0 to 255
+    int8_t  b1 = 200; 
+    /* int_8 goes from -128 to 127, so when it goes over 127 it will wrap
+    around to the minimum value of -128 and continue counting from there.*/
+    int8_t  c1 = -1; //-1 it's included in the range of int8_t
 
     //0.5
-    int8_t  x = 127;
-    x = x + 1;
+    int8_t  x = 127; //127 it's in the range of int8_t
+    x = x + 1; //when we add 1 it will wrap around to the minimum value of int8_t which is -128
 
-    uint8_t y = 255;
-    y = y + 1;
+    uint8_t y = 255; //255 it's in the range of uint8_t
+    y = y + 1; //when we add 1 it will wrap around to the minimum value of uint8_t which is 0
 
-    //0.6
-    result = 0x0F + 0x01;
-    result = 0xFF + 0x01;
-    result = 0xA0 + 0x5F;
-    result = 0xA0 + 0x60;
+   //0.6
+    uint8_t result;
+
+    result = 0x0F + 0x01; //no overflow, result will be 0x10 since 0x0F = 15, 0x01 = 1
+    result = 0xFF + 0x01; //overflow, result will be 0x00 since 0xFF = 255, 0x01 = 1 it will go to 0
+    result = 0xA0 + 0x5F; //no overflow, result will be 0xFF since 0xA0 = 160, 0x5F = 95, it will go to 255
+    result = 0xA0 + 0x60; //overflow, result will be 0x00 since 0xA0 = 160, 0x60 = 96, it will go to 0
 
     //0.7
-    x = 0x01;
-    x = 0x02;
-    x = 0x04;
-    x = 0x08;
-    x = 0x10;
-    x = 0x20;
-    x = 0x40;
-    x = 0x80;
+    uint8_t x1=0;
+    x1 = 0x01;
+    x1 = 0x02;
+    x1 = 0x04;
+    x1 = 0x08;
+    x1 = 0x10;
+    x1 = 0x20;
+    x1 = 0x40;
+    x1 = 0x80;
+
+    /* This pattern is made by shifting one place to the left in bits*/
 
     //0.8
-    uint8_t a = 5;
-    uint8_t b = 0;
-    uint8_t c = 255;
+    uint8_t a2 = 5;
+    uint8_t b2 = 0;
+    uint8_t c2 = 255;
 
-    uint8_t r1 = !a;
-    uint8_t r2 = !b;
-    uint8_t r3 = !c;
-    uint8_t r4 = ~c;
-    uint8_t r5 = ~a;
+    uint8_t r1 = !a2; //r1 will be 0 since a2 is not 0, negation of a non-zero value is 0
+    uint8_t r2 = !b2; //r2 will be 1 since b2 is 0, negation of 0 is 1
+    uint8_t r3 = !c2; //r3 will be 0 since c2 is not 0, negation of a non-zero value is 0
+    uint8_t r4 = ~c2; //r4 will be 0 since c2 is 255, in bin 255=11111111 inverting 0=00000000
 
+    uint8_t r5 = ~a2; //bitwise NOT of 5 take 5 in bin and invert all bits
+    // since 5=00000101 inverting it gives 11111010=250 
+
+    /* ! its a logical negation operator for boolean data meanwhile ~ is a bitwise operator */
 
 	while (1){
 
