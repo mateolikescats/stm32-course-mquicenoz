@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 #
-# setup-stm32.sh — make a fresh STM32 CMake project build and debug in VS Code.
+# setup-stm32-cmsis-clangd.sh — setup-stm32.sh plus the CMSIS and clangd steps
+# of guia-proyecto-bare-metal-stm32-ES.md (sections 2 and 3).
 #
 # Works with both kinds of project, detected automatically:
 #
@@ -14,30 +15,26 @@
 #   layout       Empty only: sources in Src/ and Inc/ are moved to Core/Src and
 #                Core/Inc, and the paths in cmake/files.cmake, cmake/flags.cmake
 #                and project-description.json are updated to match
-#   name         Empty only: project() and PROJECT_NAME in CMakeLists.txt are set
-#                to the name in project-description.json (a CMakeLists.txt copied
-#                from another project keeps the old name)
-#   CMSIS        Empty only: CMakeLists.txt links the CMSIS headers and
-#                system_stm32xxxx.c from the local STM32Cube repository
-#                (~/STM32Cube/Repository, or $STM32CUBE_REPO) and defines the
-#                device symbol (STM32F411xE, STM32F446xx...). Nothing is copied.
+#   CMSIS        Empty only (guide section 2): CMakeLists.txt links the CMSIS
+#                headers and system_stm32xxxx.c from the local STM32Cube
+#                repository (~/STM32Cube/Repository, or $STM32CUBE_REPO) and
+#                defines the device symbol (STM32F411xE, STM32F446xx...).
+#                Nothing is copied.
 #   .settings/   bundle store: pins the ST toolchain, cmake, ninja, gdbserver...
 #                (without bundles-lock.store.json, cube-cmake cannot find
 #                arm-none-eabi-gcc and the configure step fails; the Empty
 #                wizard writes it as "{}")
-#   .vscode/     settings.json (clangd + IntelliSense off), launch.json (with
-#                the ST-LINK Stop fix), tasks.json, c_cpp_properties.json
+#   .vscode/     settings.json (IntelliSense off, guide section 3), launch.json
+#                (with the ST-LINK Stop fix), tasks.json, c_cpp_properties.json
 #   .clangd, .gitignore
 #
-# Then it configures and builds the Debug preset to prove the project works,
-# and runs clangd on main.c to prove it finds the CMSIS headers.
+# Then it configures and builds the Debug preset to prove the project works.
 #
-# Usage:  setup-stm32.sh [--force] [--dry-run] [--no-build] [project_dir]
+# Usage:  setup-stm32-cmsis-clangd.sh [--force] [--dry-run] [--no-build] <project_dir>
 #
-#   project_dir defaults to the current directory
 #   --force     overwrite existing config files (originals are kept as *.bak)
 #   --dry-run   only print what would be done
-#   --no-build  skip the configure + build + clangd check
+#   --no-build  skip the configure + build check
 #
 # Only the Core/Src, Core/Inc layout is supported.
 
@@ -61,7 +58,7 @@ while [[ $# -gt 0 ]]; do
     esac
     shift
 done
-PROJ="${PROJ:-.}"
+[[ -n "$PROJ" ]] || usage 1
 
 info()  { printf '  \033[32m✔\033[0m %s\n' "$*"; }
 skip()  { printf '  \033[33m•\033[0m %s\n' "$*"; }
@@ -73,15 +70,6 @@ title() { printf '\n\033[1m%s\033[0m\n' "$*"; }
 run() {
     local what="$1"; shift
     if [[ $DRY_RUN -eq 1 ]]; then info "$what (would do)"; else "$@"; info "$what"; fi
-}
-
-# patch_file <relative path> <message> <sed script>: edit a file in place.
-# The sed patterns only match the old form, so running twice changes nothing.
-# The first original is kept as *.bak (a later patch does not overwrite it).
-patch_file() {
-    local rel="$1" msg="$2" dst="$PROJ/$1" new
-    new="$(sed "$3" "$dst")"
-    put_file "$rel" "$msg" "$new"
 }
 
 # put_file <relative path> <message> <new content>: replace a file's content
@@ -208,9 +196,19 @@ else
     fi
 
     # fix_paths <relative path> <sed script>: rewrite the old Src/Inc paths.
+    # The sed patterns only match the old form, so running twice changes nothing.
     fix_paths() {
-        patch_file "$1" "paths updated to Core/" "$2" \
-            || skip "$1 (paths already point to Core/)"
+        local rel="$1" dst="$PROJ/$1" new
+        new="$(sed "$2" "$dst")"
+        if [[ "$new" == "$(cat "$dst")" ]]; then
+            skip "$rel (paths already point to Core/)"; return
+        fi
+        if [[ $DRY_RUN -eq 1 ]]; then
+            info "$rel (would update paths to Core/)"; return
+        fi
+        cp "$dst" "$dst.bak"
+        printf '%s\n' "$new" > "$dst"
+        info "$rel (paths updated to Core/, original kept as $rel.bak)"
     }
 
     # cmake/*.cmake is what the build uses; project-description.json is what the
@@ -227,17 +225,6 @@ else
         done < <(grep -o '${CMAKE_CURRENT_SOURCE_DIR}/[^"]*' "$PROJ/cmake/files.cmake" | sed 's#${CMAKE_CURRENT_SOURCE_DIR}/##')
         [[ $missing -eq 0 ]] || fail "cmake/files.cmake lists sources that do not exist (see above)."
         info "All sources in cmake/files.cmake exist"
-    fi
-
-    # A CMakeLists.txt copied from another project keeps that project's name,
-    # while cmake/flags.cmake (the .map file) uses the one in project-description.json.
-    CML_NAME="$(sed -n 's/^set(PROJECT_NAME \(.*\))/\1/p' "$PROJ/CMakeLists.txt" | head -1)"
-    if [[ -n "$CML_NAME" && "$CML_NAME" != "$PROJECT_NAME" ]]; then
-        patch_file CMakeLists.txt "project name '$CML_NAME' -> '$PROJECT_NAME'" \
-            "s#^project($CML_NAME)#project($PROJECT_NAME)#; s#^set(PROJECT_NAME $CML_NAME)#set(PROJECT_NAME $PROJECT_NAME)#" \
-            || true
-    else
-        skip "CMakeLists.txt project name is $PROJECT_NAME"
     fi
 fi
 
@@ -278,7 +265,7 @@ else
 fi
 
 # ---------------------------------------------------------------------------
-title "4. CMSIS headers (linked from the STM32Cube repository)"
+title "4. CMSIS headers (guide section 2, linked from the STM32Cube repository)"
 # ---------------------------------------------------------------------------
 if [[ "$KIND" == "CubeMX" ]]; then
     skip "CubeMX copies CMSIS into Drivers/ — nothing to link"
@@ -318,28 +305,20 @@ else
     DEV_DEFINE="${u:0:${#u}-2}${tail2//X/x}"
     info "Device  : $DEV_HDR.h -> $DEV_DEFINE"
 
-    # The startup file calls SystemInit() before main(). It lives in CMSIS's
-    # system_stm32xxxx.c, unless the project already ships its own.
-    SRC_DIR="$PROJ/Core/Src"; [[ -d "$SRC_DIR" ]] || SRC_DIR="$PROJ/Src"
+    # Guide section 2.1: the startup file calls SystemInit() before main(). It
+    # lives in CMSIS's system_stm32xxxx.c, unless the project already ships its
+    # own (then linking it too would give "multiple definition of SystemInit").
     NEED_SYSTEM=0
-    if cat "$SRC_DIR"/*.[sS] 2>/dev/null | grep -Eq '^[[:space:]]*bl[[:space:]]+SystemInit' \
-        && ! cat "$SRC_DIR"/*.c 2>/dev/null | grep -Eq '^[[:space:]]*void[[:space:]]+SystemInit[[:space:]]*\([^;]*$'; then
+    if cat "$PROJ"/Core/Src/*.[sS] 2>/dev/null | grep -Eq '^[[:space:]]*bl[[:space:]]+SystemInit' \
+        && ! cat "$PROJ"/Core/Src/*.c 2>/dev/null | grep -Eq '^[[:space:]]*void[[:space:]]+SystemInit[[:space:]]*\([^;]*$'; then
         NEED_SYSTEM=1
-    fi
-
-    CML="$PROJ/CMakeLists.txt"
-    # An existing CMSIS_ROOT that points nowhere (project copied from another
-    # machine, or package updated) is moved to the package found above.
-    OLD_ROOT="$(sed -n 's/^set(CMSIS_ROOT "\(.*\)")/\1/p' "$CML" | head -1)"
-    if [[ -n "$OLD_ROOT" && ! -f "$OLD_ROOT/Drivers/CMSIS/Device/ST/$FAM_DIR/Include/$DEV_HDR.h" ]]; then
-        patch_file CMakeLists.txt "CMSIS_ROOT moved to $CMSIS_DIR (old path does not exist)" \
-            "s#^set(CMSIS_ROOT \".*\")#set(CMSIS_ROOT \"$CMSIS_DIR\")#" || true
     fi
 
     # Append only the pieces that are missing, so running twice changes nothing
     # and a CMakeLists.txt already set up by hand (weeks 04/05) is kept as is.
+    CML="$PROJ/CMakeLists.txt"
     block=""
-    if [[ -z "$OLD_ROOT" ]]; then
+    if ! grep -q '^set(CMSIS_ROOT ' "$CML"; then
         block+=$'\n# Path to the STM32Cube firmware package (adjust it if the version changes)\n'
         block+="set(CMSIS_ROOT \"$CMSIS_DIR\")"$'\n'
     fi
@@ -477,27 +456,6 @@ write_file .vscode/settings.json <<EOF
 }
 EOF
 
-# A settings.json kept above may hold the student's own settings, so it is not
-# replaced; only what clangd needs is patched in: the installed GCC version in
-# --query-driver, and Microsoft's IntelliSense turned off.
-SETTINGS="$PROJ/.vscode/settings.json"
-if [[ -f "$SETTINGS" ]]; then
-    new="$(sed -e 's#gnu-tools-for-stm32/[^/"]*/bin/arm-none-eabi-#gnu-tools-for-stm32/'"${VER[gnu-tools-for-stm32]}"'/bin/arm-none-eabi-#g' \
-               -e 's#"C_Cpp.intelliSenseEngine": *"[^"]*"#"C_Cpp.intelliSenseEngine": "disabled"#' "$SETTINGS")"
-    if ! grep -q '"C_Cpp.intelliSenseEngine"' <<<"$new"; then
-        new="${new%"${new##*[![:space:]]}"}"           # trailing blanks
-        [[ "$new" == *"}" ]] || fail ".vscode/settings.json does not end with '}'. Fix it or run with --force."
-        new="${new%\}}"; new="${new%"${new##*[![:space:]]}"}"
-        [[ "$new" == *"{" || "$new" == *"," ]] || new+=","
-        new+=$'\n    // Microsoft\'s C/C++ IntelliSense competes with clangd for the same files;'
-        new+=$'\n    // while it is on, clangd\'s go-to-definition links between sources never work.'
-        new+=$'\n    "C_Cpp.intelliSenseEngine": "disabled"\n}'
-    fi
-    put_file .vscode/settings.json "clangd settings updated" "$new" || true
-    grep -q '"stm32cube-ide-clangd.arguments"' "$SETTINGS" \
-        || warn ".vscode/settings.json has no clangd settings — run with --force to replace it"
-fi
-
 write_file .vscode/launch.json <<EOF
 {
     "version": "0.2.0",
@@ -579,25 +537,44 @@ mx.scratch
 EOF
 
 # ---------------------------------------------------------------------------
-title "6. Configure and build (Debug)"
+title "6. clangd (guide section 3)"
+# ---------------------------------------------------------------------------
+# 3.1: the clangd binary
+if command -v clangd >/dev/null; then
+    skip "clangd installed ($(command -v clangd))"
+else
+    warn "clangd is not installed — run: sudo apt install clangd"
+fi
+
+# 3.2: a settings.json kept above (no --force) may still have Microsoft's
+# IntelliSense on; only that line is patched in, the rest is the student's.
+SETTINGS="$PROJ/.vscode/settings.json"
+if [[ -f "$SETTINGS" ]] && ! grep -q '"C_Cpp.intelliSenseEngine": *"disabled"' "$SETTINGS"; then
+    new="$(sed 's#"C_Cpp.intelliSenseEngine": *"[^"]*"#"C_Cpp.intelliSenseEngine": "disabled"#' "$SETTINGS")"
+    if ! grep -q '"C_Cpp.intelliSenseEngine"' <<<"$new"; then
+        new="${new%"${new##*[![:space:]]}"}"           # trailing blanks
+        [[ "$new" == *"}" ]] || fail ".vscode/settings.json does not end with '}'. Fix it or run with --force."
+        new="${new%\}}"; new="${new%"${new##*[![:space:]]}"}"
+        [[ "$new" == *"{" || "$new" == *"," ]] || new+=","
+        new+=$'\n    "C_Cpp.intelliSenseEngine": "disabled"\n}'
+    fi
+    put_file .vscode/settings.json "IntelliSense disabled" "$new" || true
+else
+    skip ".vscode/settings.json has IntelliSense disabled"
+fi
+
+# 3.3: .clangd was written in step 5
+
+# ---------------------------------------------------------------------------
+title "7. Configure and build (Debug)"
 # ---------------------------------------------------------------------------
 BUILD_DIR="$PROJ/build/Debug"
-BUILD_FAILED=0
 
 # A configure done without the ST tools (e.g. by the system cmake before the
 # lock file existed) leaves a cache that never generated build.ninja.
 # CMake keeps reusing that broken cache, so it has to go.
 if [[ -f "$BUILD_DIR/CMakeCache.txt" && ! -f "$BUILD_DIR/build.ninja" ]]; then
     run "Deleted failed configure in build/Debug" rm -rf "$BUILD_DIR"
-fi
-
-# A build/ copied or moved together with the project still points to the old
-# folder; CMake refuses to reuse it, and clangd would index the old paths.
-if [[ -f "$BUILD_DIR/CMakeCache.txt" ]]; then
-    cache_src="$(sed -n 's/^CMAKE_HOME_DIRECTORY:INTERNAL=//p' "$BUILD_DIR/CMakeCache.txt")"
-    if [[ -n "$cache_src" && "$cache_src" != "$PROJ" ]]; then
-        run "Deleted build/Debug configured for another folder ($cache_src)" rm -rf "$BUILD_DIR"
-    fi
 fi
 
 if [[ $DO_BUILD -eq 0 || $DRY_RUN -eq 1 ]]; then
@@ -608,50 +585,12 @@ else
         tail -20 "$log"; fail "Configure failed (full log: $log)"
     fi
     info "Configure OK"
-    # The configuration is right once configure passes; a failing build is
-    # usually the code itself, so report it but still run the clangd check.
-    if (cd "$PROJ" && "$CUBE_CMAKE" --build --preset Debug >"$log" 2>&1); then
-        info "Build OK: build/Debug/$PROJECT_NAME.elf"
-        grep -E '^\s*(RAM|FLASH):' "$log" | sed 's/^/      /' || true
-        rm -f "$log"
-    else
-        BUILD_FAILED=1
-        grep -E 'error|undefined reference|multiple definition' "$log" | head -15 | sed 's/^/      /' || tail -15 "$log"
-        warn "Build failed (full log: $log)"
+    if ! (cd "$PROJ" && "$CUBE_CMAKE" --build --preset Debug >"$log" 2>&1); then
+        tail -20 "$log"; fail "Build failed (full log: $log)"
     fi
-fi
-
-# ---------------------------------------------------------------------------
-title "7. clangd (code navigation into CMSIS)"
-# ---------------------------------------------------------------------------
-MAIN_C="$PROJ/Core/Src/main.c"
-if [[ $DO_BUILD -eq 0 || $DRY_RUN -eq 1 ]]; then
-    skip "Skipped"
-elif [[ ! -f "$BUILD_DIR/compile_commands.json" ]]; then
-    fail "build/Debug/compile_commands.json was not generated — clangd has nothing to read."
-elif [[ ! -f "$MAIN_C" ]]; then
-    skip "No Core/Src/main.c to check"
-else
-    grep -q 'Drivers/CMSIS/Core/Include' "$BUILD_DIR/compile_commands.json" \
-        || fail "compile_commands.json has no CMSIS include path — check CMakeLists.txt."
-    info "compile_commands.json has the CMSIS include paths"
-
-    # Same clangd and --query-driver that VS Code uses (.vscode/settings.json)
-    CLANGD="$BUNDLES/st-arm-clangd/${VER[st-arm-clangd]}/bin/starm-clangd"
-    [[ -x "$CLANGD" ]] || fail "starm-clangd not found in $(dirname "$CLANGD")"
-    out="$(cd "$PROJ" && timeout 120 "$CLANGD" --check="$MAIN_C" \
-        --query-driver="$BUNDLES/gnu-tools-for-stm32/${VER[gnu-tools-for-stm32]}/bin/arm-none-eabi-gcc*" 2>&1 || true)"
-    if grep -q "file not found" <<<"$out"; then
-        grep "file not found" <<<"$out" | sed 's/^/      /'
-        fail "clangd cannot find a header included by main.c."
-    fi
-    grep -q "All checks completed" <<<"$out" || { tail -10 <<<"$out"; fail "clangd --check did not finish."; }
-    info "clangd resolves every #include in Core/Src/main.c"
-    diags="$(grep -E '^E\[[^]]*\] \[' <<<"$out" | sed 's/^E\[[^]]*\] /      /' || true)"
-    if [[ -n "$diags" ]]; then
-        warn "clangd reports errors in main.c itself (code, not configuration):"
-        printf '%s\n' "$diags" | head -10
-    fi
+    info "Build OK: build/Debug/$PROJECT_NAME.elf"
+    grep -E '^\s*(RAM|FLASH):' "$log" | sed 's/^/      /' || true
+    rm -f "$log"
 fi
 
 title "Done."
@@ -660,8 +599,4 @@ echo "  If VS Code already had it open, run 'Developer: Reload Window' so the"
 echo "  CMake extension picks up the new settings."
 echo "  If the CMake extension asks for a preset, choose 'Debug'."
 echo "  Debug: Run and Debug > 'STM32Cube: Launch ST-Link GDB Server' (F5)."
-echo "  Ctrl+Click on RCC or GPIOA should open the CMSIS header."
-if [[ $BUILD_FAILED -eq 1 ]]; then
-    printf '\n\033[33mThe project is configured, but the code does not build yet (see step 6).\033[0m\n'
-    exit 1
-fi
+echo "  Ctrl+Click on RCC or GPIOA should open the CMSIS header (guide section 3)."

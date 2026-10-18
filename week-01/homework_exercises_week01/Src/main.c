@@ -20,6 +20,7 @@
 
 int main(void)
 {
+    //1.1
     uint8_t a          = 17;
     uint8_t b          = 5;
     uint8_t div_result = a / b; //since it's uint8_t, div_result will be 3, ignores the remainder 
@@ -28,17 +29,48 @@ int main(void)
 
     div_result = div_result*b + mod_result; //3*5+2 = 17
 
+    //1.2
     uint8_t x   = 200;
     uint8_t y   = 100;
     uint8_t sum = x + y; // 200+100=300, overflows of uint8_t, so sum will be 44 (300-256=44)
 
     /*Overflow can trigger bugs in embedded systems if not handled properly.*/
 
-    uint8_t val = 3;
-    uint8_t left1  = val << 1;
-    uint8_t left2  = val << 2;
-    uint8_t left3  = val << 3;
-    uint8_t right1 = val >> 1;
+    //1.3
+    uint8_t val = 3; //0b0000011
+    uint8_t left1  = val << 1; //0b0000110 = 6
+    uint8_t left2  = val << 2; //0b0001100 = 12
+    uint8_t left3  = val << 3; //0b0011000 = 24
+    uint8_t right1 = val >> 1; //0b0000001 = 1
+
+    /* Shifting to the left duplicates the decimal number. */
+
+    //1.4
+    uint8_t val1 = 4;
+    uint8_t val2 = 2;
+    uint8_t val3 = 4;
+    uint8_t result = 0;
+
+    if (val1 != 0 && val2 != 0 && val3 != 0)
+    {
+        result = val1 + val2 + val3;
+    }
+    else if (val1 == 0 || val2 == 0 || val3 == 0)
+    {
+        result = val1 -val2 - val3;
+    }
+    else if (val1 == val2 || val1 == val3 || val2 == val3)
+    {
+        result = val1 * val2 * val3;
+    }
+
+    //1.5
+    for (uint8_t i = 0; i < 10)
+    {
+        i=i++;
+    }
+    
+    for 
 
 
 
