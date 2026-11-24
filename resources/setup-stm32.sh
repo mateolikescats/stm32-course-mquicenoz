@@ -227,7 +227,9 @@ case "$(uname -s)-$(uname -m)" in
     *) fail "Platform $(uname -s)-$(uname -m) is not handled by this prototype." ;;
 esac
 
-CUBE_CMAKE="$(ls -d "$HOME"/.vscode/extensions/stmicroelectronics.stm32cube-ide-build-cmake-*/resources/cube-cmake/$CUBE_OS/cube-cmake 2>/dev/null | sort -V | tail -1 || true)"
+# ~/.vscode: VS Code installed on Linux; ~/.vscode-server: VS Code connected through Remote-WSL or SSH
+CUBE_CMAKE="$(ls -d "$HOME"/.vscode/extensions/stmicroelectronics.stm32cube-ide-build-cmake-*/resources/cube-cmake/$CUBE_OS/cube-cmake \
+    "$HOME"/.vscode-server/extensions/stmicroelectronics.stm32cube-ide-build-cmake-*/resources/cube-cmake/$CUBE_OS/cube-cmake 2>/dev/null | sort -V | tail -1 || true)"
 if [[ -z "$CUBE_CMAKE" && $DO_BUILD -eq 1 ]]; then
     fail "cube-cmake not found. Is the 'STM32Cube build CMake' VS Code extension installed?"
 fi

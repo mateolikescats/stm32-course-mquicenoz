@@ -1,3 +1,4 @@
 {
-    "cmake.sourceDirectory": "/home/mateo/github/stm32-course-mquicenoz/clase_EXTI"
+    "cmake.sourceDirectory": "/home/mateo/github/stm32-course-mquicenoz/",
+    "cmake.ignoreCMakeListsMissing": true
 }
