@@ -74,7 +74,7 @@ static void event_name(HAL_UART_RxEventTypeTypeDef type, char *name, size_t size
 
 	if (type == HAL_UART_RXEVENT_IDLE)
 	{
-		text = "IDLE"; //idle
+		text = "IDLE"; //standby
 	}
 	else if (type == HAL_UART_RXEVENT_TC)
 	{
@@ -109,7 +109,7 @@ static void print_block(HAL_UART_RxEventTypeTypeDef type, uint16_t size)
 	for (uint16_t i = 0U; i < size; i++)
 	{
 		uint8_t b = rx_buf[i]; //received byte
-		msg[used] = ((b >= 0x20U) && (b < 0x7FU)) ? (char)b : '.'; //printable ASCII or '.'
+		msg[used] = ((b >= 0x20U) && (b < 0x7FU)) ? (char)b : '.'; //printable ASCII (char) or '.'
 		used++;
 	}
 
@@ -128,7 +128,7 @@ static void uart2_init(void)
 	huart2.Init.Parity = UART_PARITY_NONE; //not using parity
 	huart2.Init.Mode = UART_MODE_TX_RX; //transmit and receive
 	huart2.Init.HwFlowCtl = UART_HWCONTROL_NONE; //no flow control
-	huart2.Init.OverSampling = UART_OVERSAMPLING_16; //oversampling 16
+	huart2.Init.OverSampling = UART_OVERSAMPLING_16; //oversampling 16 times
 	if (HAL_UART_Init(&huart2) != HAL_OK) //calls HAL_UART_MspInit()
 	{
 		Error_Handler(); //checks error
@@ -150,11 +150,11 @@ void HAL_UART_MspInit(UART_HandleTypeDef *huart) //UART hardware
 	__HAL_RCC_DMA1_CLK_ENABLE(); //enable DMA1 (AHB1)
 
 	/*2. PA2 TX, PA3 RX*/
-	gpio.Pin = GPIO_PIN_2 | GPIO_PIN_3; //PA2 TX, PA3 RX
+	gpio.Pin = GPIO_PIN_2 | GPIO_PIN_3; //PA2 transmit, PA3 receive
 	gpio.Mode = GPIO_MODE_AF_PP; //alternate function
 	gpio.Pull = GPIO_PULLUP; //idle UART line is high
 	gpio.Speed = GPIO_SPEED_FREQ_HIGH; //high speed
-	gpio.Alternate = GPIO_AF7_USART2; //AF7: USART2
+	gpio.Alternate = GPIO_AF7_USART2; //alternate function for USART2
 	HAL_GPIO_Init(GPIOA, &gpio); //Initialization
 
 	/*3. DMA1 stream 5 channel 4: USART2_RX*/

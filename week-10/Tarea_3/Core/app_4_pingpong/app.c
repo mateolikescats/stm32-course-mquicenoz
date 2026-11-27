@@ -18,7 +18,7 @@
 //Constants
 #define RX_BLOCK_SIZE    32U //bytes per reception block
 #define TX_BUF_SIZE      256U //text waiting to be sent
-#define TX_WAIT_MS       50U //max TX wait
+#define TX_WAIT_MS       50U //max transmit wait
 #define LINE_MAX_LEN     63U //longest line accepted
 #define REPLY_SIZE       96U //longest command answer
 #define KEY_BACKSPACE    0x08U //Backspace
@@ -34,8 +34,8 @@ typedef struct
 
 //Handles
 static UART_HandleTypeDef huart2;
-static DMA_HandleTypeDef hdma_usart2_rx; //RX DMA
-static DMA_HandleTypeDef hdma_usart2_tx; //TX DMA
+static DMA_HandleTypeDef hdma_usart2_rx; //receiving DMA
+static DMA_HandleTypeDef hdma_usart2_tx; //transmitting DMA
 
 //Reception
 static rx_block_t rx_block[2]; //block A = 0, block B = 1
@@ -49,8 +49,8 @@ static uint32_t rx_pause_reported = 0U; //pauses already printed
 //Transmission
 static uint8_t tx_fill[TX_BUF_SIZE]; //text to send
 static uint16_t tx_fill_len = 0U; //bytes in tx_fill
-static uint8_t tx_dma_buf[TX_BUF_SIZE]; //DMA TX buffer
-static volatile bool tx_busy = false; //TX running
+static uint8_t tx_dma_buf[TX_BUF_SIZE]; //DMA transmit buffer
+static volatile bool tx_busy = false; //transmit running
 
 //Line being typed
 static char line[LINE_MAX_LEN + 1U]; //+1 for '\0'
@@ -63,7 +63,7 @@ static void uart2_init(void); //UART settings
 static void uart2_start_rx(void); //start DMA reception
 static void uart2_send_bytes(const uint8_t *data, uint16_t size); //queue bytes
 static void uart2_send_text(const char *text); //queue string
-static void uart2_flush(void); //start DMA TX
+static void uart2_flush(void); //start DMA transmitting
 static void line_add_byte(uint8_t new_byte); //add byte to line
 static void line_execute(void); //run line
 
@@ -149,7 +149,7 @@ static void line_add_byte(uint8_t new_byte)
 	{
 		line[line_len] = (char)new_byte; //save char
 		line_len++; //length + 1
-		uart2_send_bytes(&new_byte, 1U); //echo
+		uart2_send_bytes(&new_byte, 1U); //shows typed char
 	}
 	else
 	{
@@ -193,7 +193,7 @@ static void uart2_init(void)
 	huart2.Init.Parity = UART_PARITY_NONE; //not using parity
 	huart2.Init.Mode = UART_MODE_TX_RX; //transmit and receive
 	huart2.Init.HwFlowCtl = UART_HWCONTROL_NONE; //no flow control
-	huart2.Init.OverSampling = UART_OVERSAMPLING_16; //oversampling 16
+	huart2.Init.OverSampling = UART_OVERSAMPLING_16; //oversampling 16 times
 	if (HAL_UART_Init(&huart2) != HAL_OK) //calls HAL_UART_MspInit()
 	{
 		Error_Handler(); //checks error
@@ -219,7 +219,7 @@ void HAL_UART_MspInit(UART_HandleTypeDef *huart) //UART hardware
 	gpio.Mode = GPIO_MODE_AF_PP; //alternate function
 	gpio.Pull = GPIO_PULLUP; //idle UART line is high
 	gpio.Speed = GPIO_SPEED_FREQ_HIGH; //high speed
-	gpio.Alternate = GPIO_AF7_USART2; //AF7: USART2
+	gpio.Alternate = GPIO_AF7_USART2; //alternate function for USART2
 	HAL_GPIO_Init(GPIOA, &gpio); //Initialization
 
 	/*3a. DMA1 stream 5 channel 4: USART2_RX*/
@@ -269,7 +269,7 @@ static void uart2_start_rx(void)
 {
 	uint8_t index = rx_dma_index; //read the volatile once
 
-	if (HAL_UARTEx_ReceiveToIdle_DMA(&huart2, rx_block[index].data, RX_BLOCK_SIZE) == HAL_OK) //ends at IDLE or when full
+	if (HAL_UARTEx_ReceiveToIdle_DMA(&huart2, rx_block[index].data, RX_BLOCK_SIZE) == HAL_OK) //ends at standby or when full
 	{
 		__HAL_DMA_DISABLE_IT(&hdma_usart2_rx, DMA_IT_HT); //HT interrupt off
 	}
@@ -279,7 +279,7 @@ static void uart2_send_bytes(const uint8_t *data, uint16_t size)
 {
 	uint32_t start = HAL_GetTick(); //start time
 
-	if (size > TX_BUF_SIZE)
+	if (size > TX_BUF_SIZE) //checks limit
 	{
 		size = TX_BUF_SIZE; //limit size
 	}

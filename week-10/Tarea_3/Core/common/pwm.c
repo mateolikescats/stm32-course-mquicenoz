@@ -41,7 +41,7 @@ void pwm_init(void)
 
 	/*3. Time base*/
 	htim_pwm.Instance = PWM_TIM; //select TIM2
-	htim_pwm.Init.Prescaler = (HAL_RCC_GetPCLK1Freq() / PWM_COUNTER_HZ) - 1U; //16 MHz / 1 MHz - 1 = 15
+	htim_pwm.Init.Prescaler = (HAL_RCC_GetPCLK1Freq() / PWM_COUNTER_HZ) - 1U; //16MHz / 1MHz - 1 = 15
 	htim_pwm.Init.CounterMode = TIM_COUNTERMODE_UP; //counter up
 	htim_pwm.Init.Period = PWM_PERIOD_TICKS - 1U; //ARR = 999 -> 1 kHz
 	htim_pwm.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1; //not used
@@ -74,13 +74,12 @@ void pwm_init(void)
 //Actions
 bool pwm_set_duty(uint32_t percent)
 {
-	if (!pwm_started || (percent > PWM_MAX_PERCENT))
+	if (!pwm_started)
 	{
-		return false; //not started or out of range
+		return false; //not started in this app
 	}
 
-	__HAL_TIM_SET_COMPARE(&htim_pwm, PWM_CHANNEL,
-	                      (percent * PWM_PERIOD_TICKS) / PWM_MAX_PERCENT); //CCR2 = percent * 10
+	__HAL_TIM_SET_COMPARE(&htim_pwm, PWM_CHANNEL, percent * (PWM_PERIOD_TICKS / 100U)); //CCR2 = percent * 10
 	pwm_duty = percent; //save duty
 	return true;
 }
@@ -88,9 +87,4 @@ bool pwm_set_duty(uint32_t percent)
 uint32_t pwm_get_duty(void)
 {
 	return pwm_duty; //last accepted duty
-}
-
-bool pwm_is_started(void)
-{
-	return pwm_started; //true once pwm_init() ran
 }

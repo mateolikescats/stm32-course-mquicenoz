@@ -80,7 +80,7 @@ static void uart2_init(void)
 	huart2.Init.Parity = UART_PARITY_NONE; //not using parity
 	huart2.Init.Mode = UART_MODE_TX_RX; //transmit and receive
 	huart2.Init.HwFlowCtl = UART_HWCONTROL_NONE; //no flow control
-	huart2.Init.OverSampling = UART_OVERSAMPLING_16; //oversampling 16
+	huart2.Init.OverSampling = UART_OVERSAMPLING_16; //oversampling 16 times
 	if (HAL_UART_Init(&huart2) != HAL_OK) {
 		Error_Handler(); //checks error
 	}

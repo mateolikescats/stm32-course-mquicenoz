@@ -87,8 +87,8 @@ static void line_add_byte(uint8_t new_byte)
 	else if (line_len < LINE_MAX_LEN) //space left in line
 	{
 		line[line_len] = (char)new_byte; //save character
-		line_len++; //length + 1
-		uart2_send_bytes(&new_byte, 1U); //echo
+		line_len++; //looks for next
+		uart2_send_bytes(&new_byte, 1U); //shows typed char
 	}
 	else
 	{
@@ -169,7 +169,7 @@ static void uart2_send_bytes(const uint8_t *data, uint16_t size)
 
 static void uart2_send_text(const char *text)
 {
-	uart2_send_bytes((const uint8_t *)text, (uint16_t)strlen(text)); //strlen stops at '\0'
+	uart2_send_bytes((const uint8_t *)text, (uint16_t)strlen(text)); //strlen stops at null char
 }
 
 //Interrupt handlers

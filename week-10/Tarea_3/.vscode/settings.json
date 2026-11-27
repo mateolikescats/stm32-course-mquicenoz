@@ -2,7 +2,7 @@
     "cmake.cmakePath": "cube-cmake",
     "cmake.configureArgs": [
         "-DCMAKE_COMMAND=cube-cmake",
-        "-DAPP=pingpong"
+        "-DAPP=pingpong" //selector
     ],
     "cmake.preferredGenerators": [
         "Ninja"

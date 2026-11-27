@@ -99,7 +99,7 @@ target_sources(${PROJECT_NAME} PRIVATE
     ${CMAKE_SOURCE_DIR}/Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_uart.c
 )
 
-# ---- Application selector ---------------------------------------------
+# ------------------ APP SELECTOR ----------------------------------
 # One fixed main.c, several applications: APP decides which app.c is compiled.
 # Each new stage adds its name to the STRINGS list and one APP_DIR_<name> line.
 # APP comes from "cmake.configureArgs" in .vscode/settings.json (-DAPP=...).

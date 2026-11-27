@@ -47,22 +47,12 @@ static void cmd_help(char *reply, size_t size)
 	(void)snprintf(reply, size, "commands: help, info, blink <ms>, echo <text>, pwm <0..100>");
 }
 
-//info: uptime, blink and pwm
+//info: uptime and blink
 static void cmd_info(char *reply, size_t size)
 {
-	if (pwm_is_started())
-	{
-		(void)snprintf(reply, size, "uptime %lu ms, blink %lu ms, pwm %lu %%",
-		               (unsigned long)HAL_GetTick(),
-		               (unsigned long)blinky_GetPeriod(),
-		               (unsigned long)pwm_get_duty());
-	}
-	else
-	{
-		(void)snprintf(reply, size, "uptime %lu ms, blink %lu ms, pwm off",
-		               (unsigned long)HAL_GetTick(),
-		               (unsigned long)blinky_GetPeriod());
-	}
+	(void)snprintf(reply, size, "uptime %lu ms, blink %lu ms",
+	               (unsigned long)HAL_GetTick(),
+	               (unsigned long)blinky_GetPeriod());
 }
 
 //blink <ms>
@@ -70,11 +60,7 @@ static void cmd_blink(const cmd_t *cmd, char *reply, size_t size)
 {
 	uint32_t ms = 0U;
 
-	if (cmd->argc == 0U) //no argument: show period
-	{
-		(void)snprintf(reply, size, "blink %lu ms", (unsigned long)blinky_GetPeriod());
-	}
-	else if (cmd->argc != 1U) //exactly one argument
+	if (cmd->argc != 1U) //exactly one argument
 	{
 		(void)snprintf(reply, size, "usage: blink <ms>");
 	}
@@ -116,11 +102,7 @@ static void cmd_pwm(const cmd_t *cmd, char *reply, size_t size)
 {
 	uint32_t percent = 0U;
 
-	if (!pwm_is_started())
-	{
-		(void)snprintf(reply, size, "error: pwm is not started in this application");
-	}
-	else if (cmd->argc == 0U)
+	if (cmd->argc == 0U) //no argument: show duty
 	{
 		(void)snprintf(reply, size, "pwm %lu %%", (unsigned long)pwm_get_duty());
 	}
@@ -132,10 +114,13 @@ static void cmd_pwm(const cmd_t *cmd, char *reply, size_t size)
 	{
 		(void)snprintf(reply, size, "error: '%s' is not a number", cmd->argv[0]);
 	}
-	else if (!pwm_set_duty(percent))
+	else if (percent > 100U) //out of range
 	{
-		(void)snprintf(reply, size, "error: pwm accepts 0 to %lu %%",
-		               (unsigned long)PWM_MAX_PERCENT);
+		(void)snprintf(reply, size, "error: pwm accepts 0 to 100 %%");
+	}
+	else if (!pwm_set_duty(percent)) //pwm_init() not called
+	{
+		(void)snprintf(reply, size, "error: pwm is not started in this application");
 	}
 	else
 	{

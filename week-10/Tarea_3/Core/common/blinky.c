@@ -18,19 +18,9 @@
 static TIM_HandleTypeDef htim_blinky;
 static volatile uint32_t blinky_period_ms; //current toggle period in ms
 
-//ms -> ARR
-static uint32_t blinky_MsToArr(uint32_t toggle_ms)
-{
-	return (toggle_ms * (BLINKY_TICK_HZ / 1000U)) - 1U; //10 ticks per ms, -1
-}
-
 //Hardware
 void blinky_Init(uint32_t toggle_ms)
 {
-	if ((toggle_ms < BLINKY_MIN_MS) || (toggle_ms > BLINKY_MAX_MS)) {
-		Error_Handler(); //bad value
-	}
-
 	GPIO_InitTypeDef GPIO_InitStruct = {0}; //definition for initialization
 
 	/*Clock*/
@@ -49,7 +39,7 @@ void blinky_Init(uint32_t toggle_ms)
 	htim_blinky.Instance = BLINKY_TIM; //select TIM9
 	htim_blinky.Init.Prescaler = (HAL_RCC_GetPCLK2Freq() / BLINKY_TICK_HZ) - 1U; //16 MHz / 10 kHz - 1 = 1599
 	htim_blinky.Init.CounterMode = TIM_COUNTERMODE_UP; //counter up
-	htim_blinky.Init.Period = blinky_MsToArr(toggle_ms); //ARR from ms
+	htim_blinky.Init.Period = (toggle_ms * (BLINKY_TICK_HZ / 1000U)) - 1U; //10 ticks per ms, -1
 	htim_blinky.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1; //not used
 	htim_blinky.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_ENABLE; //ARR preload
 	if (HAL_TIM_Base_Init(&htim_blinky) != HAL_OK) {
@@ -74,7 +64,7 @@ bool blinky_SetPeriod(uint32_t toggle_ms)
 		return false; //out of range
 	}
 
-	__HAL_TIM_SET_AUTORELOAD(&htim_blinky, blinky_MsToArr(toggle_ms)); //new ARR
+	__HAL_TIM_SET_AUTORELOAD(&htim_blinky, (toggle_ms * (BLINKY_TICK_HZ / 1000U)) - 1U); //new ARR
 	blinky_period_ms = toggle_ms; //save period
 
 	return true;
