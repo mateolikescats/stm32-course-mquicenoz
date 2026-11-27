@@ -1,6 +1,6 @@
 /*
  * system.h
- * Clock tree setup and the common error trap.
+ * Clock setup and error trap.
  * Author: Mateo Quiceno Zapata
  */
 
@@ -8,6 +8,6 @@
 #define SYSTEM_H
 
 void SystemClock_Config(void);
-void Error_Handler(void); /* disables interrupts and loops forever */
+void Error_Handler(void); /* stops the CPU */
 
 #endif /* SYSTEM_H */

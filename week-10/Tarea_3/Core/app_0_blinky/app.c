@@ -1,19 +1,7 @@
-/**
- ******************************************************************************
- * @file           : app.c (Stage 0: blinky)
- * @author         : Mateo Quiceno Zapata
- * @brief          : Only the blinky, no UART yet.
- ******************************************************************************
- *** DESCRIPTION
-
- main.c already started the blinky (TIM9 toggles PH1 every 250 ms from its
- interrupt), so this stage has nothing to do. It checks that the structure
- (fixed main.c + APP selector + shared modules) builds and runs.
-
- ***HOW TO CHECK
-
- - PH1 blinks at 2 Hz.
- - Error_Handler() called in app_init() freezes the LED: "CPU stuck".
+/*
+ * app.c (Stage 0: blinky)
+ * Only the blinky, no UART yet.
+ * Author: Mateo Quiceno Zapata
  */
 
 #include "stm32f4xx_hal.h"
@@ -28,5 +16,5 @@ void app_init(void)
 
 void app_loop(void)
 {
-	//nothing: the blinky runs from the TIM9 interrupt
+	//nothing, blinky runs by interrupt
 }

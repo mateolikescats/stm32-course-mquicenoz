@@ -103,7 +103,7 @@ target_sources(${PROJECT_NAME} PRIVATE
 # One fixed main.c, several applications: APP decides which app.c is compiled.
 # Each new stage adds its name to the STRINGS list and one APP_DIR_<name> line.
 # APP comes from "cmake.configureArgs" in .vscode/settings.json (-DAPP=...).
-set(APP "blinky" CACHE STRING "Application to build")
+set(APP "pingpong" CACHE STRING "Application to build")
 set_property(CACHE APP PROPERTY STRINGS blinky polling interrupt dma_idle pingpong)
 set(APP_DIR_blinky    ${CMAKE_SOURCE_DIR}/Core/app_0_blinky)
 set(APP_DIR_polling   ${CMAKE_SOURCE_DIR}/Core/app_1_polling)

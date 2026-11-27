@@ -1,35 +1,7 @@
-/**
- ******************************************************************************
- * @file           : commands.c
- * @author         : Mateo Quiceno Zapata
- * @brief          : What each command does. Each handler writes one line
- *                   (no line ending) into 'reply'.
- ******************************************************************************
- *** DESCRIPTION
-
- Shared by Stages 2, 3 and 4: app.c only moves bytes, cmd_parser.c turns a
- line into words, this file decides. It never touches registers: the
- hardware lives in blinky.c and pwm.c.
-
- ***COMMAND TABLE
-
- +----------------------+----------------------------------------------+
- | You type             | The board answers                            |
- +----------------------+----------------------------------------------+
- | help                 | commands: help, info, blink <ms>, ...        |
- | info                 | uptime ... ms, blink 250 ms, pwm 0 %         |
- | blink 1000           | ok: blink 1000 ms (PH1 slows down)           |
- | blink                | blink 1000 ms                                |
- | blink 10             | error: blink accepts 50 to 5000 ms           |
- | blink abc            | error: 'abc' is not a number                 |
- | pwm 50               | ok: pwm 50 % (PA1 LED at half brightness)    |
- | pwm                  | pwm 50 %                                     |
- | pwm 150              | error: pwm accepts 0 to 100 %                |
- | pwm 50 (Stage 2/3)   | error: pwm is not started in this application|
- | echo   two   words   | two words                                    |
- | echo a b c d e       | error: too many arguments                    |
- | reboot               | error: unknown command 'reboot' (type help)  |
- +----------------------+----------------------------------------------+
+/*
+ * commands.c
+ * What each command does: help, info, blink, echo, pwm.
+ * Author: Mateo Quiceno Zapata
  */
 
 #include <stdbool.h>
@@ -40,14 +12,14 @@
 #include "blinky.h"
 #include "pwm.h"
 
-#define PARSE_MAX_VALUE 1000000U //stop before uint32_t could overflow
+#define PARSE_MAX_VALUE 1000000U //max number accepted
 
-//text -> number. Only digits allowed: "abc", "12x", "-5" and "" are rejected
+//text -> number, only digits
 static bool parse_u32(const char *text, uint32_t *value)
 {
 	uint32_t result = 0U;
 
-	if (*text == '\0') //empty text is not a number
+	if (*text == '\0') //empty
 	{
 		return false;
 	}
@@ -58,14 +30,14 @@ static bool parse_u32(const char *text, uint32_t *value)
 		{
 			return false;
 		}
-		result = (result * 10U) + (uint32_t)(*p - '0'); //'7' - '0' = 7: shift left one digit, add the new one
-		if (result > PARSE_MAX_VALUE) //too big, reject before it can overflow
+		result = (result * 10U) + (uint32_t)(*p - '0'); //add next digit
+		if (result > PARSE_MAX_VALUE) //too big
 		{
 			return false;
 		}
 	}
 
-	*value = result; //written only on success
+	*value = result; //result
 	return true;
 }
 
@@ -75,7 +47,7 @@ static void cmd_help(char *reply, size_t size)
 	(void)snprintf(reply, size, "commands: help, info, blink <ms>, echo <text>, pwm <0..100>");
 }
 
-//info: time since reset, current blinky period and pwm duty (Stage 6)
+//info: uptime, blink and pwm
 static void cmd_info(char *reply, size_t size)
 {
 	if (pwm_is_started())
@@ -93,12 +65,12 @@ static void cmd_info(char *reply, size_t size)
 	}
 }
 
-//blink <ms>: check the argument, then let blinky.c check the limits
+//blink <ms>
 static void cmd_blink(const cmd_t *cmd, char *reply, size_t size)
 {
 	uint32_t ms = 0U;
 
-	if (cmd->argc == 0U) //Stage 6: "blink" alone reports the current period
+	if (cmd->argc == 0U) //no argument: show period
 	{
 		(void)snprintf(reply, size, "blink %lu ms", (unsigned long)blinky_GetPeriod());
 	}
@@ -110,7 +82,7 @@ static void cmd_blink(const cmd_t *cmd, char *reply, size_t size)
 	{
 		(void)snprintf(reply, size, "error: '%s' is not a number", cmd->argv[0]);
 	}
-	else if (!blinky_SetPeriod(ms)) //blinky.c owns the limits (BLINKY_MIN_MS..MAX_MS)
+	else if (!blinky_SetPeriod(ms)) //out of range
 	{
 		(void)snprintf(reply, size, "error: blink accepts %lu to %lu ms",
 		               (unsigned long)BLINKY_MIN_MS, (unsigned long)BLINKY_MAX_MS);
@@ -121,17 +93,17 @@ static void cmd_blink(const cmd_t *cmd, char *reply, size_t size)
 	}
 }
 
-//echo <text>: joins the arguments with one space
+//echo <text>
 static void cmd_echo(const cmd_t *cmd, char *reply, size_t size)
 {
 	size_t used = 0U; //characters already in reply
 
-	reply[0] = '\0'; //"echo" alone answers an empty line
+	reply[0] = '\0'; //empty reply
 	for (uint8_t i = 0U; i < cmd->argc; i++)
 	{
-		const char *sep = (i == 0U) ? "" : " "; //space before every word but the first
-		int n = snprintf(&reply[used], size - used, "%s%s", sep, cmd->argv[i]); //write right after the previous word
-		if ((n < 0) || ((size_t)n >= (size - used))) //error or did not fit: stop, reply is still a valid string
+		const char *sep = (i == 0U) ? "" : " "; //space between words
+		int n = snprintf(&reply[used], size - used, "%s%s", sep, cmd->argv[i]); //add word
+		if ((n < 0) || ((size_t)n >= (size - used))) //no more room
 		{
 			break;
 		}
@@ -139,7 +111,7 @@ static void cmd_echo(const cmd_t *cmd, char *reply, size_t size)
 	}
 }
 
-//pwm <0..100>: Stage 5. "pwm" alone reports the current duty (Stage 6)
+//pwm <0..100>
 static void cmd_pwm(const cmd_t *cmd, char *reply, size_t size)
 {
 	uint32_t percent = 0U;
@@ -171,10 +143,10 @@ static void cmd_pwm(const cmd_t *cmd, char *reply, size_t size)
 	}
 }
 
-//one switch, direct calls: no function pointers (Power of 10, rule 9)
+//runs the command
 void commands_execute(const cmd_t *cmd, char *reply, size_t reply_size)
 {
-	if (cmd->too_many_args) //checked first, for every command
+	if (cmd->too_many_args) //too many arguments
 	{
 		(void)snprintf(reply, reply_size, "error: too many arguments");
 		return;

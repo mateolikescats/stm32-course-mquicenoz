@@ -1,7 +1,6 @@
 /*
  * cmd_parser.h
- * Splits a text line into a command and its arguments. No hardware: it
- * compiles on a PC too.
+ * Splits a line into a command and its arguments.
  * Author: Mateo Quiceno Zapata
  */
 
@@ -25,14 +24,14 @@ typedef enum
 
 typedef struct
 {
-	cmd_id_t id;                     /* which command; CMD_UNKNOWN if not in the table */
-	const char *name;                /* the first word, as typed */
-	uint8_t argc;                    /* number of arguments after the name */
-	const char *argv[CMD_MAX_ARGS];  /* the arguments, each one ending in '\0' */
+	cmd_id_t id;                     /* command id */
+	const char *name;                /* first word */
+	uint8_t argc;                    /* number of arguments */
+	const char *argv[CMD_MAX_ARGS];  /* arguments */
 	bool too_many_args;
 } cmd_t;
 
-/* Splits 'line' in place: separators become '\0'. Returns false for an empty line. */
+/* Splits line in place, false = empty line */
 bool cmd_parse(char *line, cmd_t *cmd);
 
 #endif /* CMD_PARSER_H */
