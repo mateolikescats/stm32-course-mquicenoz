@@ -26,7 +26,9 @@ static uint8_t rx_buf[RX_BUF_SIZE]; //DMA buffer
 static volatile uint16_t rx_event_size = 0U; //bytes received
 static volatile HAL_UART_RxEventTypeTypeDef rx_event_type = HAL_UART_RXEVENT_IDLE; //IDLE, TC or HT
 static volatile bool rx_event_ready = false; //block ready
-static volatile uint32_t rx_error = 0U; //error code
+static volatile uint32_t rx_error_count = 0U; //errors since reset
+static volatile uint32_t rx_error_code = 0U; //last HAL error code
+static uint32_t rx_error_reported = 0U; //errors already printed
 
 //Functions
 static void uart2_init(void); //UART settings
@@ -56,13 +58,12 @@ void app_loop(void)
 	}
 
 	/*Part 2: report reception errors*/
-	if (rx_error != 0U)
+	if (rx_error_count != rx_error_reported) //new error
 	{
 		char msg[48]; //line to send
-		uint32_t code = rx_error; //copy error
-		rx_error = 0U; //clear for next
+		rx_error_reported = rx_error_count; //reported
 		(void)snprintf(msg, sizeof msg, "[uart error 0x%02lX, reception restarted]\r\n",
-		               (unsigned long)code); //0x04 framing, 0x02 noise, 0x08 overrun
+		               (unsigned long)rx_error_code); //0x04 framing, 0x02 noise, 0x08 overrun
 		uart2_send_text(msg); //shows in terminal
 	}
 }
@@ -220,7 +221,8 @@ void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart)
 {
 	if (huart->Instance == USART2)
 	{
-		rx_error = huart->ErrorCode; //app_loop prints it
+		rx_error_code = huart->ErrorCode; //save code
+		rx_error_count++; //app_loop reports it
 		uart2_start_rx(); //restart reception
 	}
 }

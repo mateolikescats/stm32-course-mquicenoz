@@ -42,6 +42,7 @@ static void uart2_init(void); //UART initialization
 static void uart2_start_rx(void); //receive next byte
 static void uart2_send_bytes(const uint8_t *data, uint16_t size); //send bytes
 static void uart2_send_text(const char *text); //send string
+static bool rx_ring_get(uint8_t *byte_to_get); //take one byte from the ring
 static void line_add_byte(uint8_t new_byte); //add byte to line
 static void line_execute(void); //run line
 
@@ -53,11 +54,11 @@ void app_init(void)
 
 void app_loop(void)
 {
+	uint8_t b = 0U; //byte taken from the ring
+
 	/*Part 1: empty the ring*/
-	while (rx_tail != rx_head) //unread bytes
+	while (rx_ring_get(&b)) //unread bytes
 	{
-		uint8_t b = rx_ring[rx_tail]; //read byte
-		rx_tail = (uint16_t)((rx_tail + 1U) & (RX_RING_SIZE - 1U)); //next index
 		line_add_byte(b); //add to line
 	}
 
@@ -70,6 +71,18 @@ void app_loop(void)
 		(void)snprintf(msg, sizeof msg, "\r\n[uart error 0x%02lX, reception restarted]\r\n", (unsigned long)code); //0x08 = overrun
 		uart2_send_text(msg); //shows in terminal
 	}
+}
+
+//Actions: ring buffer
+static bool rx_ring_get(uint8_t *byte_to_get)
+{
+	if (rx_tail == rx_head)
+	{
+		return false; //ring empty
+	}
+	*byte_to_get = rx_ring[rx_tail]; //oldest byte
+	rx_tail = (uint16_t)((rx_tail + 1U) & (RX_RING_SIZE - 1U)); //next index
+	return true;
 }
 
 //Actions: line assembly

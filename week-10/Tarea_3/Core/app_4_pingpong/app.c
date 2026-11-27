@@ -43,8 +43,10 @@ static volatile uint8_t rx_dma_index = 0U; //block the DMA is filling
 static uint8_t read_index = 0U; //block to read
 static volatile bool rx_paused = false; //reception paused
 static volatile uint32_t rx_pause_count = 0U; //pause count
-static volatile uint32_t rx_error = 0U; //error code
 static uint32_t rx_pause_reported = 0U; //pauses already printed
+static volatile uint32_t rx_error_count = 0U; //errors since reset
+static volatile uint32_t rx_error_code = 0U; //last HAL error code
+static uint32_t rx_error_reported = 0U; //errors already printed
 
 //Transmission
 static uint8_t tx_fill[TX_BUF_SIZE]; //text to send
@@ -111,13 +113,12 @@ void app_loop(void)
 		rx_pause_reported = rx_pause_count; //reported
 		uart2_send_text("\r\n[reception paused: both blocks busy, data lost]\r\n"); //shows in terminal
 	}
-	if (rx_error != 0U)
+	if (rx_error_count != rx_error_reported) //new error
 	{
 		char msg[48]; //line to send
-		uint32_t code = rx_error; //copy error
-		rx_error = 0U; //clear for next
+		rx_error_reported = rx_error_count; //reported
 		(void)snprintf(msg, sizeof msg, "\r\n[uart error 0x%02lX, reception restarted]\r\n",
-		               (unsigned long)code); //0x04 framing, 0x02 noise, 0x08 overrun
+		               (unsigned long)rx_error_code); //0x04 framing, 0x02 noise, 0x08 overrun
 		uart2_send_text(msg); //shows in terminal
 	}
 
@@ -373,7 +374,8 @@ void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart)
 {
 	if (huart->Instance == USART2)
 	{
-		rx_error = huart->ErrorCode; //app_loop prints it
+		rx_error_code = huart->ErrorCode; //save code
+		rx_error_count++; //app_loop reports it
 		if (huart->gState == HAL_UART_STATE_READY)
 		{
 			tx_busy = false; //TX stopped
